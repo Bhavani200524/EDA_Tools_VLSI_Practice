@@ -1,0 +1,121 @@
+Workshop on VLSI Design and Verification
+________________________________________
+
+Agenda for day 2:
+	1st half of the day: 
+	Convert sync fifo design into async fifo design
+	Convert sync fifo tb into async fifo tb
+	view waveforms, understand debugs with verdi
+	2nd half of the day:
+	Lab work on both sync and async fifo
+
+frequencies
+	write and read frequencies should be different
+	
+	external ports
+	wr_clk, rd_clk
+	write interface
+	wr_en_i, wdata_i, full_o, wr_error_o
+	read interface
+	rd_en_i, rdata_o, empty_o, rd_error_o
+
+always block w.r.t wr clk
+	only write operation will be performed here
+	write error will be updated here
+always block w.r.t rd clk
+	only read operation will be performed here
+	read error will be updated here
+
+wr_ptr, rd_ptr, 
+wr_toggle_f, rd_toggle_f
+
+internal variables of write operation are updated wrt write clock
+internal variables of read operation are updated wrt read clock
+
+while calculating full and empty conditions, they are not really comparable
+
+We will need to calculate wr_ptr_rd_clk this value wrt rd clock
+we can compare this with rd_ptr
+to calculate empty condition, we will use comparison of wr_ptr_rd_clk and rd_ptr
+
+We will need to calculate rd_ptr_wr_clk this value wrt wr clock
+we can compare this with wr_ptr
+to calculate full condition, we will use comparison of wr_ptr and rd_ptr_wr_clk
+
+Binary to gray code conversion manually ?
+				0->0->0->1
+				|  |  |  |
+				0  0  0  1
+
+	wr_ptr[3:0]
+	wr_ptr_gray[3]=wr_ptr[3];
+	wr_ptr_gray[2]=wr_ptr[3]^wr_ptr[2];
+	wr_ptr_gray[1]=wr_ptr[2]^wr_ptr[1];
+	wr_ptr_gray[0]=wr_ptr[1]^wr_ptr[0];
+	wr_ptr[3] wr_ptr[2]wr_ptr[1]wr_ptr[0]
+	wr_ptr[3] wr_ptr[3]wr_ptr[2]wr_ptr[1]
+	wr_ptr_gray={wr_ptr[3],wr_ptr[3:1]^wr_ptr[2:0]}
+	wr_ptr_gray={wr_ptr[msb],wr_ptr[msb:1]^wr_ptr[msb-1:0]}
+
+	rd_ptr_gray={rd_ptr[3],rd_ptr[3:1]^rd_ptr[2:0]}
+
+changed design so that there are two always block wrt two different clocks
+wr error update in wr always block
+rd error update in rd always block
+
+to generate full and empty conditions, 
+	we got the solution of synchronizing the ptr and flag values wrt other clock
+	this solution had one issue of too many bits changing at the same time in synchronizer
+	this issue won't be seen is simulation 
+	but it will be seen in real hardware
+	to resolve this issue we used gray code
+		we can convert binary ptr value to gray value in corresponding always block
+		or we can convert it in synchronizer stage
+
+	2nd option will leave us with same issue of too many bits being changed
+	we can convert binary ptr value to gray value in corresponding always block
+
+concurrent write read test
+	 we need to introduce some random delay between writes and reads
+	 this delay mimics the component being busy with some other task.
+	 when ready to write into/read from fifo, then making the corresponding request
+	 since we know, writing is happening faster than reading, we can keep wr_delay higher than rd_delay
+
+Please go thru these aspects of SV language and oop concepts before next session
+SV an object oriented programming language
+	allows you to bundle up all the signals and communicate thru tb components
+	tb implementation becomes bit easier
+	it also allows you to use a lot of non synthesizable tb oriented constructs
+
+to write run.sh
+	because there are many commands that we need to give for a particular simulation
+	otherwise same commands can be executed in terminal separately
+	run.sh
+		vcs -full64 -sverilog -debug_access+r -kdb <file_name.v>
+		./simv
+		#above will execute code in terminal itself. signal changes during execution are saved in provided file.
+		./simv -gui &
+		#above  will open verdi tool with verdi console
+		with run command in verdi console you will be able to execute code in the tool
+	if you are writing run.sh file change its permissions to executable
+	chmod +x run.sh command
+	you can then directly give
+	./run.sh command in terminal
+	to open verdi in debug mode
+	verdi -ssf fsdb_file_name.fsdb
+
+Lab work:
+	write async fifo design
+	testbench
+	implement following without random delays
+		fifo_full_test
+		fifo_empty_test
+		full_error_test
+		empty_error_test
+		will update following testcase around 3:30pm
+		conc_wr_rd_test
+
+People facing issue with $fsdbDumpfile try $dumpfile
+with do not provide extension to file name in initial block or in -ssf command
+	verdi -ssf fsdb_file_name
+

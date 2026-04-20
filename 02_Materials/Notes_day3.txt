@@ -1,0 +1,146 @@
+meet back at 2:30pm
+
+we will start with async tb using sv
+sync fifo verilog design and tb 
+async fifo verilog design and tb 
+
+As the design complexity grows, 
+verifying all the features from same module also becomes complicated
+
+what all things are done for async fifo verification in tb ?
+	generating stimulus.
+		various testcases
+	drive it to the dut
+	can add method to compare written data and read data to check the order.
+	verifying whether all the features have been excercised will be a manual process.
+
+eg of laptop verification
+	keyboard
+		separate keys
+	screen
+	touchpad
+	usb
+	ethernet
+		multiple testcases acc to features offered under this port
+	hdmi
+	power
+	bluetooth
+	wifi
+	webcam
+	speakers
+	mic
+
+if i verify only keyboard feature, My verification is not complete
+we need some sort of analysis which tells how many features have been excercised
+	covergroups are provided by sv to do above analysis
+	it doesn't telll if analysis was successful
+	it only tells is feature has been excercised or not
+	50% coverage is done if 6 features out of 12 are excercised
+
+as the design complexity grows manual analysis of such kind can lead to incomplete verification
+verilog is hardware description language
+	most constructs from verilog synthesizable
+but for verification we don't need to have synthesizable constructs
+
+sv was developed to make verification easier
+	it is hardware verification language
+	all the verilog constructs are present as it is in sv
+	a lot of verfication related constructs are added. 
+	it is easier to make tb modular and resusable with sv.
+	modular means compartmentalised: specific job perfromed by specific component
+	eg. job of stimulus generation : gen will take care of stimulus generation
+	job of driving stimulus to the dut: bus functional module bfm/driver
+	in case of issues in tb, it is easier to narrow it down to specific component and debug.
+	in complex examples, we see having separate components performing separate jobs makes it easy to add more testcases or analysis processes
+
+	reusable means, once i have IP for a particular protocol written, I don't have to write it again and again. I can simply use the data driving environment in my current design if it uses that communication protocol. 
+
+	UVM is a methodolody built using sv constructs
+	uvm has all the common functionalities written for any tb execution.
+	it also provides guidelines as to how to use these pre written functionalities
+	100+ classes
+	300+ macros
+	many utility methods 
+
+if some design takes around 6 -7 months to get verified using verilog
+sv will allow it to be completed within 4.5 to 5 months
+uvm will allow it to be completed within 3.5 to 4 months
+	backend process can start
+	post silicon processes will also start early
+	product in market faster
+
+in 12 steps of front end verification process
+	we have a step to come up with tb architecture
+	if my design has two separate interfaces. eg. in fifo , we have wr_if, rd_if, 
+		tb will also have components containing wr_if related components separate and rd_if related components separate
+	to implement the tb architecture we came up with, we use sv
+		sv uses oop
+		defines user defined data types / class / templates
+		objects
+		class fifo_tx;
+			//properties
+			rand bit[31:0] data;
+			rand bit wr_en;
+			rand bit rd_en;
+			//methods
+			function void print();
+				$display("data=%0d",data);
+				$display("wr_en=%0d",wr_en);
+				$display("rd_en=%0d",rd_en);
+			endfunction
+			//constraints for properties
+		endclass
+
+integer a;
+fifo_tx tx1=new();
+fifo_tx2;
+tx2=tx1;
+	tx1.randomize();
+	//data=$random();
+	tx1.print()
+
+using oop concept, we can create the tb architecture that we have developed
+for class to module communication sv introduces concept of interface
+for bfm and monitor to communicate to the design interface helps
+	physical interface and virtual interface
+
+writing fifo tb 
+	top module
+		clk gen
+		rst gen
+		interface instantiation
+		dut instantiation and connection with interface
+		env creation and starting env
+	
+	fifo_env
+		creates wr_agent and rd_agent instances
+		calls their run method
+		
+		wr_agent
+			creates wr_gen, wr_bfm, wr_mon, wr_cov components
+			calls their run metohd concurrently
+
+		rd_agent
+			creates rd_gen, rd_bfm, rd_mon, rd_cov components
+			calls their run metohd concurrently
+		
+			all the lowest level hierarchy components at this point are only printing msgs
+
+
+Lab activity
+	build basic template of fifo tb using the diagram,
+expected output in terminal:	
+top module functionality started
+	 fifo_env run method called
+		 wr_agent run method called
+			 wr_gen run method called
+			 wr_bfm run method called
+			 wr_mon run method called
+			 wr_cov run method called
+		 rd_agent run method called
+			 rd_gen run method called
+			 rd_bfm run method called
+			 rd_mon run method called
+			 rd_cov run method called
+	
+To get maximum out of this workshop, practice tool on your own and lab timing. 

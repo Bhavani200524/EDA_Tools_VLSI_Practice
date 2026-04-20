@@ -1,0 +1,213 @@
+Day-5	: Async FIFO Functional Verification
+Date	: 25th April 2024
+
+o UVM:
+	o Universal Verification Methodology.
+		- This is just a methodology
+		- This is not a language
+			- If this is not a language which language it is using?
+				- System Verilog.
+
+	o What this methodology is telling to us?
+		- It tells how to write tb in sv.
+
+	o This UVM comes with lot more base classes.
+		- We will use all these base classes while writing the tb.
+		- How we will use that base classes here.
+			- I will use inheritance and inherit all the methods and properties from the base classes
+
+	o What are those base classes are:
+
+		o In SV we created the following classes:
+			- Environment
+			- Agent
+			- Generator
+			- BFM
+			- Monitor
+			- COverage
+			- Scoreboard
+
+		o UVM base classes:
+			- uvm_env
+			- uvm_agent
+			- uvm_sequencer
+			- uvm_driver
+			- uvm_monitor
+			- uvm_subscriber
+			- uvm_scoreboard
+
+	o We have two types of classes:
+		o The classes that are extended from uvm_object
+			- These are called as objects.
+				- uvm_sequence_item  in uvm( tx class in sv )
+				- uvm_sequence (We write the functionality of testcase in gen in sv)
+				- Note:
+					- Always a sequence should run on a sequencer.
+
+		o The classes that are extended from uvm_component
+			- These are called as components.
+				- uvm_test => this is a class for every testcase
+				- uvm_env  -> this is base class for the environment
+				- uvm_agent => this is base class for the agents
+				- uvm_sequencer => this is the base class for the sequencer
+				- uvm_driver => this is the base class for the driver
+				- uvm_monitor => this is the base class for the monitor
+				- uvm_subscriber => this is the base class for the coverage
+				- uvm_scoreboard => this is the base class for the scoreboard
+
+				- TLM Ports
+					- TLM Ports are of two kinds:	
+						- ports
+							- This is used by the masters.
+							- This is represented by the square/Rhombus.
+								- For 1 to 1 connection we use square
+								- For 1 to many connection we use Rhombus.
+							ex:-
+								- sequence_item_port is a component
+								- analysis_port is a component
+						- implementations
+							- This is used by the slaves.
+							- This is represented by the circles.
+								ex:
+								- sequence_item_export is a component
+								- analysis_export is a component
+
+
+
+		o run_test();
+			task run_test (string test_name="");
+			  uvm_root top; // instatiating root
+			  uvm_coreservice_t cs;
+			  cs = uvm_coreservice_t::get();
+			  top = cs.get_root();
+			  top.run_test(test_name); // calling run_test method from root
+			endtask
+
+			this will create the component by the name we have provided.
+
+			say we provided testcase name as test_wr_rd;
+
+			ex:	
+				run_test("test_wr_rd");
+
+	The folliowing function will get called form the factory an by the name we provide it will create the component.
+
+ pure virtual function
+      uvm_component create_component_by_name (string requested_type_name,  
+                                              string parent_inst_path="",
+                                              string name, 
+                                              uvm_component parent);
+
+			comp=create_component_by_name("test_wr_rd","","UVM_TEST_TOP",null);
+
+
+	o How to register a component/object to factory:
+
+		o Object 	=>	`uvm_object_utils(class_name)
+		o Component =>	`uvm_component_utils(class_name)
+		If we want ot register multiple fileds to factory.
+			- while registering the class to factory only we need to do that
+			o Object 	=>	`uvm_object_utils_begin(class_name)
+								`uvm_field_int(wr_en,UVM_ALL_ON)
+			                `uvm_object_utils_end
+
+			o Component =>	`uvm_component_utils_begin(class_name)
+			                `uvm_component_utils_end
+
+
+
+	o There are some methods in the uvm_component:
+		o build_phase
+			- we will use this to build the components
+			- TO get database values
+		o connect_phase
+			- We use this to connect components
+		o end_of_elaboration_phase
+			- Here we will use this to print the tb architecture
+		o start_of_simulation_phase
+			- If we want to do anything before starting of simulation
+		o run_phase
+			- Here is the actual functionality will run.
+				o schedule phase:
+					- reset
+					- configure
+					- main
+					- shutdown
+		o extract_phase
+			- Here we will extract the output of the simulation
+		o check_phase
+			- Here we will check wether any deviations happened from the spec or not
+		o report_phase
+			- Here we will declare the results
+		o final_phase
+			- Here we will end the simulation.
+		
+
+
+o Config_db:
+	
+	o This will provide some security to that.
+		- It will tell which component is eligible to access that file.
+		
+		
+	o We use two methods:
+		o set => setting resource into database
+		o get => getting resource from database
+
+	set method:
+		
+ 	static function void set(uvm_component cntxt,
+                           string inst_name,
+                           string field_name,
+                           T value);
+
+			cntxt:	who is setting the resource into database
+			inst_name: who can access this resource
+			field_name: what is the name of the resource
+			value: value of the resouce
+
+
+	ex:
+
+	fifo_intf pif(wr_clk,rd_clk,rst);
+
+	uvm_config_db #(virtual fifo_intf) :: set(uvm_root::get(),"*",vif,pif);
+			
+
+
+	 Get method:
+	 
+	 static function bit get(uvm_component cntxt,
+                          string inst_name,
+                          string field_name,
+                          inout T value);
+
+			cntxt:	who is getting the resource from database
+			inst_name: who can access this resource
+			field_name: what is the name of the resource
+			value: to which variable i need ot store the resouce
+
+
+	ex:
+		driver need to get intf from config_db
+
+		if(!uvm_config_db#(virtual fifo_intf)::get(this,"","vif",vif))begin
+			`uvm_info("ID","MSG",VERBOSITY)
+			`uvm_info("WR_DRIVER","I Cant get the resource from the database",UVM_MEDIUM)
+		end
+
+		There are two kinds of verbosity:
+			o message verbosity
+			o Reference verbosity
+				UVM_NONE
+				UVM_LOW
+				UVM_MEDIUM
+				UVM_HIGH
+				UVM_FULL
+				UVM_DEBUG
+
+
+
+
+
+

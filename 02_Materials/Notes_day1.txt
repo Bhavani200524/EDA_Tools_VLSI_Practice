@@ -1,0 +1,198 @@
+VLSI Design Flow
+________________
+
+Front end domain flow
+	
+Back end domain flow
+
+
+
+Synchronous fifo
+________________
+
+External ports that fifo will require
+	clk_i, rst_i, wr_en_i, wdata_i, rd_en_i, rdata_o, full_o, empty_o, error_o
+
+	_i indicates it is input to the design. 
+	_o indicates it is output of the design.
+
+	error_o is raised only when we try to write into a full fifo or
+	when we read from an empty fifo
+
+Two ways to write logic for synchronous fifo
+	implementation 1:
+	we put data one after the other on same location
+		here fifo wil have to make sure, once the data is written, it is shifted to reading address
+	from the other end after reading out one data element, 
+		entire buffer structure is shifted so that next element is read out in correct order.
+	
+	implementation 2:
+	use pointers to read and write data
+	pointers cannot be externally available. 
+	they need to be internal logic
+		while implementing them we need to think about num of locations available in fifo
+		pointer width that is required to point to all locations
+	
+	At reset, both wr_ptr and rd_ptr will point at 0th location
+	fifo is empty at this point
+	when i write 1 data element, it will write it at 0th location and wr_ptr will immediately increment to 1
+	wr_ptr always points to location which needs to be written next
+	when i write 1 data element, it will write it at 1st location and wr_ptr will immediately increment to 2
+	at this point since i have not read out anything, rd_ptr points to 0th location
+	when i read from 0th location, read pointer immediately increments to 1
+	rd_ptr will always point at next in line data element to be read.
+
+How to conclude fifo is full or empty
+		i have written to my fifo till 5th location 
+		wr_ptr at this point is pointing 6th location wr_ptr=6
+		i have read out of the fifo till 3rd location 
+		rd_ptr at this point is pointing 4th location rd_ptr=4
+
+		at this point, 0th to 3rd location are empty and 6th to 15th locations are also empty
+		but fifo structure is not empty because we can still read out 2 data. 4th and 5th
+		we cannot even say fifo is full
+
+		whenever wr_ptr and rd_ptr do not match, we will find, fifo is neither empty nor full
+
+		write to all 16 locations wr_ptr=0
+		read from 13 locations rd_ptr=13
+		fifo neither empty nor full
+
+		write to all 16 locations wr_ptr=0
+		read from 0 locations rd_ptr=0
+		fifo is full
+
+		write to 0 locations wr_ptr=0
+		read from 0 locations rd_ptr=0
+		fifo is empty
+
+		write to all 16 locations wr_ptr=0
+		read from 7 locations rd_ptr=7
+		write to 7 locations wr_ptr=7
+		fifo is full
+
+		we need one more flag variable to indicate whether fifo is full/empty
+		
+		fifo_wr_flag=0
+		fifo_rd_flag=0
+
+		Let's say, after writing to all 16 locations, everytime wr_ptr comes back to 0 from 15
+		fifo_wr_flag=1
+		rd_ptr=0
+		fifo_rd_flag=0
+		at this point fifo is full.	
+
+		now I will read out of all 16 locations rd_ptr will comes back to 0 from 15
+		fifo_rd_flag=1
+		wr_ptr=0
+		fifo_wr_flag=1
+		at this point fifo is empty
+
+
+		pointer value equal will indicate fifo is either empty or full
+			here we need to check flag value to decide whether empty or full
+		pointer value not equal will indicate fifo is neither empty nor full
+			no action required
+
+What if we don't use pointers?
+	there will be no track of order in which data is put
+	we won't know if fifo is full/empty data loss possible
+	
+What if we don't use full and empty signals?
+	data loss
+	overriting
+	reading out incorrect data
+
+What if we don't use toggle flags?
+	not possible to calculate full/empty condition
+	
+Why a particular width of pointer variable?
+	depending on num of locations required to access
+	in our case, 16 num of locations 
+	so 4 bit pointer is enough to address all
+
+External ports that fifo will require
+	clk_i, rst_i, wr_en_i, wdata_i, rd_en_i, rdata_o, full_o, empty_o, error_o
+
+What are main interfaces of fifo?
+	2 main interfaces:
+		wr_interface
+			wr_en_i, wdata_i, full_o
+		rd_interface
+			rd_en_i, rdata_o, empty_o
+	common signals to both interfaces:
+		clk_i, rst_i, error_o
+
+	
+Internal registers:
+	wr_ptr, rd_ptr, wr_toggle_f, rd_toggle_f
+
+Memory structure
+	reg[Width-1:0]fifo[Depth-1:0]
+
+Once we have design understanding , next step is to 
+	List out all the features
+	come up with testcase scenarios
+		its necessary to verify design for all the features
+		writing num of data elements => "write_all_loc_testcase"
+		reading in fifo order => "read_all_loc_testcase"
+		full status shown => "fifo_full_test"
+		empty status shown => "fifo_empty_test"
+		error status shown => "wr_to_full_fifo_test"
+		error status shown => "rd_from_empty_fifo_test"
+once we write design and testbench,
+	we need to write a .sh file
+	.sh file is file that containes list of commands we need to provide with our simulation
+	without .sh file, we need to provide these commands separately in terminal
+	above may become tedious when design complexity and command command complexity with it increases
+	.sh file contents:
+vcs -full64 -sverilog -debug_access+r -kdb tb_fifo.v
+./simv	
+change permissions of .sh file to executable
+source your tool at this point
+tcsh
+source <path where your license of tool is present>
+	chmod +x run.sh
+	//.fsdb file name
+	initial begin
+		$fsdbDumpfile("sync_fifo.fsdb");
+		$fsdbDumpvars(0,top);;
+	end
+add above in your tb file so waveform information will be saved in given file	
+	after this command, run.sh file will be highlighted in green
+in terminal run following command
+./run.sh
+above command will compile and execute the tb code
+if comoilation errors, will show in terminal, with line number and what is the error
+to view the waveform and debug or trace logical issue in tb, we can open verdi in debug mode
+	verdi -ssf sync_fiso.fsdb
+
+if you are not able to create fsdb files follow following steps
+vcs -full64 -sverilog -debug_access+r -kdb tb_fifo.v
+./simv -gui &
+with above run.sh, remove .fsdb initial block from your tb
+with this, compile the code ./run.sh, when verdi opens, you will console window at the bottom of verdi 
+we have not executed the code yet in verdi bar when we provide run command
+once the code runs, you can open new waveform from buttons provided on upper part of the window
+save your selected signals in .rc format as explained before
+close the window
+compile code again
+before providing run command, restore the signals from wave window
+
+steps:
+	write design code
+	write tb for single write and single read
+		should be able to open verdi tool
+		create fsdb file
+		save signals as .rc file in fsdb file
+		observe design is reading out correct data
+
+	then implement each testcase separately
+	then add testname to be scanned from command line arguments
+	
+
+
+			
+
+
+

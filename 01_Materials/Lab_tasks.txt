@@ -1,0 +1,52 @@
+Day-4	: Async FIFO Functional Verification LAB
+Date	: 24-04-2024
+
+
+Task:
+	o Develop Wr_tx and rd_tx classes
+		o Find out the signals that will go for those classes
+			o Filter the interface signals
+
+	o Develop the wr_gen and rd_gen
+		o In run task, use case statement and develop testcases
+			o Create memory for tx
+			o Randomize the tx with inline constraint
+			o Put the tx into mailbox
+			o If required print the tx
+
+	o Drive the generated tx to the interface from WR_BFM and RD_BFM
+		o In run task, 
+			o Get the tx from mailbox
+			o Drive the tx to dut
+			o Observe the output 
+
+	o Develop the Wr_Mon and Rd_mon
+		o In run task,
+			o At every posedge of clk capture all the intf singals to tx signals
+			o Put that tx into mailbox(mon2cov and mon2sbd)
+			o If require print the tx.
+
+	o Develop Functional coverage
+		o We will develop functinoal coverage in wr_cov and rd_cov class for async fifo
+			o Create covergroup
+				o Write coverpoints(for every property)
+					o Write bins(write possible values of the property)
+			o In run task,
+				o get the tx from the mailbox
+				o sample the coverage
+
+	o Develop the scoreboard
+		o In runtask,
+			o We  need to get the tx from the mailbox
+			o Compare the datas from the two tx.
+			o If matches happens increment the match count
+			o else increment mismatch count.
+		o In Top module,
+			o Before the $finish call,
+				o check the matches and mismatches count.
+				o Based on that decide whether test is passed or failed.		
+				
+
+	o Syntax for synopsys tool:
+		Debug mode: verdi -ssf filename.fsdb
+		Coverage: verdi -cov -covdir filname.vdb	
